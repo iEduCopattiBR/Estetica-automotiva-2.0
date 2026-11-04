@@ -1,0 +1,56 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Instalar dependências
+        run: npm install --no-audit --no-fund
+
+      - name: Compilar o app web (modo APK)
+        run: npm run build
+        env:
+          APK_BUILD: "true"
+
+      - name: Copiar o app web para dentro do projeto Android
+        run: |
+          rm -rf android/app/src/main/assets
+          mkdir -p android/app/src/main/assets
+          cp -r dist/. android/app/src/main/assets/
+          find android/app/src/main/assets -name "*.apk" -delete
+          find android/app/src/main/assets -name "*.zip" -delete
+          ls -la android/app/src/main/assets
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.7
+
+      - name: Gerar APK
+        working-directory: android
+        run: gradle assembleRelease --no-daemon
+
+      - name: Conferir assinatura
+        run: |
+          APKSIGNER=$(ls $ANDROID_HOME/build-tools/*/apksigner | tail -1)
+          $APKSIGNER verify --verbose android/app/build/outputs/apk/release/app-release.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SchmittDetailer-apk
+          path: android/app/build/outputs/apk/release/app-release.apk
