@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.schmitt.detailer'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.schmitt.detailer"
+        minSdk 24
+        targetSdk 34
+        versionCode 3
+        versionName "1.0.2"
+    }
+
+    signingConfigs {
+        schmitt {
+            storeFile file('schmitt.keystore')
+            storePassword 'schmitt123'
+            keyAlias 'schmitt'
+            keyPassword 'schmitt123'
+            enableV1Signing true
+            enableV2Signing true
+            enableV3Signing true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.schmitt
+        }
+        debug {
+            signingConfig signingConfigs.schmitt
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

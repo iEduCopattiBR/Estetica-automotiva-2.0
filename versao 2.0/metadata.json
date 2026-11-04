@@ -1,0 +1,8 @@
+{
+  "name": "Remix Schmitt Detailer - Estética Automotiva",
+  "description": "Aplicativo mobile e híbrido offline-first para estética automotiva com sincronização com Google Agenda e gerador do projeto Flutter para Poco F5.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
