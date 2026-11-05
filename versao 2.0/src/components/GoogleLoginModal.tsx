@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Calendar, ShieldCheck, CheckCircle, AlertCircle, X, Sparkles, User, Mail, ArrowRight } from 'lucide-react';
+import { Calendar, ShieldCheck, CheckCircle, AlertCircle, X, Sparkles } from 'lucide-react';
 import { storageService } from '../services/storageService';
+import * as googleCalendar from '../services/googleCalendar';
 import { GoogleAuthUser } from '../types';
 
 interface GoogleLoginModalProps {
@@ -19,53 +20,21 @@ export const GoogleLoginModal: React.FC<GoogleLoginModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Start with empty or retrieve last auth email to allow switching freely
-  const currentSavedAuth = storageService.getGoogleAuth();
-  const [customEmail, setCustomEmail] = useState('');
-  const [customName, setCustomName] = useState('');
-
   if (!isOpen) return null;
 
   const handleGoogleSignIn = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     setError(null);
-
-    const emailTrimmed = customEmail.trim();
-
-    if (!emailTrimmed) {
-      setError('Por favor, informe o seu e-mail do Google (ex: seuemail@gmail.com).');
-      return;
-    }
-
-    if (!emailTrimmed.includes('@') || !emailTrimmed.includes('.')) {
-      setError('Por favor, insira um endereço de e-mail válido.');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      // Derive display name if not specified
-      const derivedName = customName.trim() || emailTrimmed.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-      const initials = derivedName.substring(0, 2).toUpperCase();
-
-      const user: GoogleAuthUser = {
-        id: 'g-user-' + Math.random().toString(36).substring(2, 10),
-        email: emailTrimmed.toLowerCase(),
-        displayName: derivedName,
-        photoUrl: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(derivedName)}&backgroundColor=e50914,1e1e24&textColor=ffffff`,
-        accessToken: 'ya29.a0AfH6SMB_' + Math.random().toString(36).substring(2, 20),
-        idToken: 'eyJhbGciOiJSUzI1NiIsImtpZCI6Ij...' + Math.random().toString(36).substring(2, 12),
-        expiresAt: Date.now() + 3600 * 1000,
-      };
-
+      const user = await googleCalendar.signIn();
       storageService.setGoogleAuth(user);
-      storageService.syncPendingToGoogleCalendar();
       onSuccess(user);
-    } catch {
-      setError('Falha ao autenticar com o Google. Verifique a conexão e tente novamente.');
+      // primeira sincronização (cria a agenda "Agenda de Clientes" e envia/puxa os eventos)
+      storageService.syncPendingToGoogleCalendar();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Falha ao autenticar com o Google. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -119,7 +88,7 @@ export const GoogleLoginModal: React.FC<GoogleLoginModalProps> = ({
                 <Sparkles size={14} className="text-amber-400" />
               </h3>
               <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
-                Você pode utilizar <strong>qualquer conta Google</strong> (pessoal ou profissional) para sincronizar os agendamentos com seu celular.
+                Use a conta Google da empresa nos dois celulares para os agendamentos aparecerem em ambos.
               </p>
             </div>
           </div>
@@ -127,50 +96,16 @@ export const GoogleLoginModal: React.FC<GoogleLoginModalProps> = ({
           <div className="mt-3 pt-3 border-t border-zinc-800 text-[11px] text-zinc-400 flex flex-col gap-1.5">
             <div className="flex items-center gap-1.5 text-zinc-300">
               <CheckCircle size={13} className="text-emerald-400 shrink-0" />
-              <span>Escopo: <code className="text-zinc-200">calendar.events</code> (Google Calendar API)</span>
+              <span>Cria a agenda <code className="text-zinc-200">Agenda de Clientes</code> na sua conta</span>
             </div>
             <div className="flex items-center gap-1.5 text-zinc-300">
               <ShieldCheck size={13} className="text-blue-400 shrink-0" />
-              <span>Armazenamento local seguro e modo 100% offline-first</span>
+              <span>Funciona offline e sincroniza quando houver internet</span>
             </div>
           </div>
         </div>
 
-        {/* Form to enter ANY Google account */}
         <form onSubmit={handleGoogleSignIn} className="space-y-3 mb-4">
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <Mail size={13} className="text-[#E50914]" />
-                Digite sua Conta Google:
-              </span>
-              <span className="text-[10px] text-zinc-500 font-normal">Qualquer conta permitida</span>
-            </label>
-            <input
-              type="email"
-              required
-              autoFocus
-              value={customEmail}
-              onChange={(e) => setCustomEmail(e.target.value)}
-              className="w-full bg-[#111113] border border-[#2c2c34] focus:border-[#E50914] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none transition shadow-inner"
-              placeholder="ex: seu.email@gmail.com"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center gap-1.5">
-              <User size={13} className="text-zinc-400" />
-              Nome do Responsável / Estética (Opcional):
-            </label>
-            <input
-              type="text"
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              className="w-full bg-[#111113] border border-[#2c2c34] focus:border-[#E50914] rounded-xl px-3.5 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none transition shadow-inner"
-              placeholder="ex: Administrador Schmitt ou Seu Nome"
-            />
-          </div>
-
           {error && (
             <div className="p-3 bg-red-950/60 border border-red-800/80 rounded-xl text-xs text-red-200 flex items-center gap-2">
               <AlertCircle size={16} className="text-red-400 shrink-0" />
@@ -206,7 +141,7 @@ export const GoogleLoginModal: React.FC<GoogleLoginModalProps> = ({
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                   />
                 </svg>
-                <span>Conectar com esta Conta Google</span>
+                <span>Entrar com a Conta Google</span>
               </>
             )}
           </button>

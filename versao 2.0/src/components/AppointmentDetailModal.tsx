@@ -51,11 +51,10 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
 
   const handleManualSync = () => {
     setIsSyncing(true);
-    storageService.syncPendingToGoogleCalendar();
-    setTimeout(() => {
+    storageService.syncPendingToGoogleCalendar().then(() => {
       setIsSyncing(false);
       onUpdated();
-    }, 600);
+    });
   };
 
   return (

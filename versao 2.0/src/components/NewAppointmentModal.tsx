@@ -21,6 +21,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [clienteNome, setClienteNome] = useState('');
   const [clienteTelefone, setClienteTelefone] = useState('');
   const [clienteVeiculo, setClienteVeiculo] = useState('');
+  const [endereco, setEndereco] = useState('');
   const [servicoTipo, setServicoTipo] = useState(() =>
     servicosCadastrados.length > 0 ? servicosCadastrados[0].nome : 'Lavagem Detalhada'
   );
@@ -67,6 +68,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       clienteNome: clienteNome.trim(),
       clienteTelefone: clienteTelefone.trim() || undefined,
       clienteVeiculo: clienteVeiculo.trim() || undefined,
+      endereco: endereco.trim() || undefined,
       servicoTipo,
       horario: fullDateTime,
       status,
@@ -133,6 +135,18 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
               value={clienteNome}
               onChange={(e) => setClienteNome(e.target.value)}
               placeholder="Ex: João da Silva"
+              className="w-full bg-[#111113] border border-[#2b2b34] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#E50914]"
+            />
+          </div>
+
+          {/* Endereço do atendimento */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5">Endereço do atendimento</label>
+            <input
+              type="text"
+              value={endereco}
+              onChange={(e) => setEndereco(e.target.value)}
+              placeholder="Rua, número, bairro"
               className="w-full bg-[#111113] border border-[#2b2b34] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#E50914]"
             />
           </div>

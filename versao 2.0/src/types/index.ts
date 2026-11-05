@@ -5,6 +5,7 @@ export interface Agendamento {
   clienteNome: string;
   clienteTelefone?: string;
   clienteVeiculo?: string;
+  endereco?: string;
   servicoTipo: string;
   horario: string; // ISO string e.g. "2026-10-29T09:00:00"
   status: StatusAgendamento;
@@ -12,6 +13,7 @@ export interface Agendamento {
   observacoes?: string;
   isSynced: boolean;
   googleEventId?: string;
+  googleUpdated?: string;
   createdAt: string;
   updatedAt: string;
 }

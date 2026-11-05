@@ -6,6 +6,7 @@ const PRODUTOS_KEY = 'schmitt_detailer_produtos';
 const TIPOS_SERVICO_KEY = 'schmitt_detailer_tipos_servico';
 const SYNC_LOGS_KEY = 'schmitt_detailer_sync_logs';
 const AUTH_KEY = 'schmitt_detailer_google_auth';
+const PENDING_DELETES_KEY = 'schmitt_detailer_pending_deletes';
 const NETWORK_SIMULATION_KEY = 'schmitt_detailer_is_online';
 
 const DEFAULT_PRODUTOS: Produto[] = [
@@ -286,6 +287,13 @@ export const storageService = {
     const filtered = list.filter((a) => a.id !== id);
     this.saveAgendamentos(filtered);
 
+    if (item.googleEventId) {
+      this.savePendingDeletes([...this.getPendingDeletes(), item.googleEventId]);
+      if (this.isOnline()) {
+        this.syncPendingToGoogleCalendar();
+      }
+    }
+
     this.addSyncLog({
       tipo: 'upload',
       detalhes: `Agendamento #${id} (${item.clienteNome}) removido do banco de dados local.`,
@@ -396,50 +404,26 @@ export const storageService = {
     safeSetItem(SYNC_LOGS_KEY, JSON.stringify(logs.slice(0, 30)));
   },
 
-  // Synchronize unsynced items to Google Calendar API simulation
-  syncPendingToGoogleCalendar(): { syncedCount: number; message: string } {
-    const isOnline = this.isOnline();
-    if (!isOnline) {
-      return { syncedCount: 0, message: 'Dispositivo offline. Os dados permanecem salvos localmente no Isar DB.' };
+  // Exclusões feitas offline que ainda precisam ser enviadas ao Google Agenda
+  getPendingDeletes(): string[] {
+    const raw = safeGetItem(PENDING_DELETES_KEY);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
+  },
 
-    const auth = this.getGoogleAuth();
-    if (!auth) {
-      return { syncedCount: 0, message: 'Google Agenda não autenticado. Faça login com a conta Google para sincronizar.' };
-    }
+  savePendingDeletes(ids: string[]) {
+    safeSetItem(PENDING_DELETES_KEY, JSON.stringify(Array.from(new Set(ids))));
+  },
 
-    const list = this.getAgendamentos();
-    const unsynced = list.filter((a) => !a.isSynced);
-
-    if (unsynced.length === 0) {
-      return { syncedCount: 0, message: 'Todos os agendamentos já estão sincronizados com o Google Agenda.' };
-    }
-
-    let synced = 0;
-    const updatedList = list.map((item) => {
-      if (!item.isSynced) {
-        synced++;
-        return {
-          ...item,
-          isSynced: true,
-          googleEventId: item.googleEventId || `gcal_${Date.now()}_${item.id}`,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-      return item;
-    });
-
-    this.saveAgendamentos(updatedList);
-    this.addSyncLog({
-      tipo: 'upload',
-      detalhes: `Sincronização concluída: ${synced} agendamento(s) enviado(s) para a Google Calendar API (primary).`,
-      sucesso: true,
-    });
-
-    return {
-      syncedCount: synced,
-      message: `${synced} agendamento(s) sincronizado(s) com sucesso na Google Agenda!`,
-    };
+  // Sincronização REAL com o Google Agenda (envia pendentes e puxa novidades)
+  async syncPendingToGoogleCalendar(): Promise<{ syncedCount: number; message: string }> {
+    const mod = await import('./googleCalendar');
+    return mod.syncAll();
   },
 
   // --- PRODUTOS & INSUMOS ---

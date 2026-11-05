@@ -19,6 +19,7 @@ import { ServicesView } from './components/ServicesView';
 import { ServiceModal } from './components/ServiceModal';
 import { ProductModal } from './components/ProductModal';
 import { storageService } from './services/storageService';
+import * as googleCalendar from './services/googleCalendar';
 import { Agendamento, Cliente, GoogleAuthUser, TipoServico, Produto } from './types';
 
 export default function App() {
@@ -69,11 +70,12 @@ export default function App() {
       if (online) {
         const savedAuth = storageService.getGoogleAuth();
         if (savedAuth) {
-          const res = storageService.syncPendingToGoogleCalendar();
-          if (res.syncedCount > 0) {
-            showToast(`${res.syncedCount} agendamento(s) sincronizado(s) com a Google Agenda.`);
-          }
-          setAgendamentos(storageService.getAgendamentos());
+          storageService.syncPendingToGoogleCalendar().then((res) => {
+            if (res.syncedCount > 0) {
+              showToast(res.message);
+            }
+            setAgendamentos(storageService.getAgendamentos());
+          });
         }
       }
     };
@@ -83,12 +85,26 @@ export default function App() {
     const handleOnline = () => {
       setIsOnline(true);
       storageService.setOnlineStatus(true);
-      const res = storageService.syncPendingToGoogleCalendar();
-      setAgendamentos(storageService.getAgendamentos());
-      if (res.syncedCount > 0) {
-        showToast(`Conexão restabelecida! ${res.syncedCount} agendamento(s) sincronizado(s).`);
+      storageService.syncPendingToGoogleCalendar().then((res) => {
+        setAgendamentos(storageService.getAgendamentos());
+        if (res.syncedCount > 0) {
+          showToast(`Conexão restabelecida! ${res.message}`);
+        }
+      });
+    };
+
+    // ao voltar para o app, busca novidades do outro celular
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible' && storageService.getGoogleAuth()) {
+        storageService.syncPendingToGoogleCalendar().then((res) => {
+          if (res.syncedCount > 0) {
+            setAgendamentos(storageService.getAgendamentos());
+            showToast(res.message);
+          }
+        });
       }
     };
+    document.addEventListener('visibilitychange', handleVisible);
 
     const handleOffline = () => {
       setIsOnline(false);
@@ -102,6 +118,7 @@ export default function App() {
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisible);
     };
   }, []);
 
@@ -160,15 +177,15 @@ export default function App() {
 
   const handleManualSync = () => {
     setIsSyncing(true);
-    setTimeout(() => {
-      const res = storageService.syncPendingToGoogleCalendar();
+    storageService.syncPendingToGoogleCalendar().then((res) => {
       refreshData();
       setIsSyncing(false);
       showToast(res.message);
-    }, 600);
+    });
   };
 
   const handleLogoutGoogle = () => {
+    googleCalendar.signOut();
     storageService.setGoogleAuth(null);
     setAuthUser(null);
     showToast('Desconectado do Google. O app continuará funcionando no modo local.');

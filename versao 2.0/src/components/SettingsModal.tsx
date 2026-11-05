@@ -31,11 +31,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const handleManualSync = () => {
     setIsSyncing(true);
     setSyncMessage(null);
-    setTimeout(() => {
-      const res = storageService.syncPendingToGoogleCalendar();
+    storageService.syncPendingToGoogleCalendar().then((res) => {
       setSyncMessage(res.message);
       setIsSyncing(false);
-    }, 700);
+    });
   };
 
   const handleReset = () => {
