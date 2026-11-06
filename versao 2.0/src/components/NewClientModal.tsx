@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, UserPlus, Car, Phone, Shield } from 'lucide-react';
+import { X, UserPlus, Car, Phone, Shield, MapPin } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Cliente } from '../types';
 
@@ -18,6 +18,7 @@ export const NewClientModal: React.FC<NewClientModalProps> = ({
   const [telefone, setTelefone] = useState('');
   const [veiculo, setVeiculo] = useState('');
   const [placa, setPlaca] = useState('');
+  const [endereco, setEndereco] = useState('');
 
   if (!isOpen) return null;
 
@@ -27,9 +28,10 @@ export const NewClientModal: React.FC<NewClientModalProps> = ({
 
     const newClient = storageService.addCliente({
       nome: nome.trim(),
-      telefone: telefone.trim() || '(11) 90000-0000',
+      telefone: telefone.trim(),
       veiculo: veiculo.trim() || 'Veículo não informado',
       placa: placa.trim().toUpperCase() || 'SEM PLACA',
+      endereco: endereco.trim() || undefined,
     });
 
     onSuccess(newClient);
@@ -111,6 +113,20 @@ export const NewClientModal: React.FC<NewClientModalProps> = ({
               onChange={(e) => setPlaca(e.target.value)}
               placeholder="Ex: ABC1D23"
               className="w-full bg-[#111113] border border-[#2b2b34] rounded-xl px-3.5 py-2.5 text-sm text-white uppercase focus:outline-none focus:border-[#E50914]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1 flex items-center gap-1.5">
+              <MapPin size={13} className="text-[#E50914]" />
+              Endereço
+            </label>
+            <input
+              type="text"
+              value={endereco}
+              onChange={(e) => setEndereco(e.target.value)}
+              placeholder="Rua, número, bairro"
+              className="w-full bg-[#111113] border border-[#2b2b34] rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-[#E50914]"
             />
           </div>
 

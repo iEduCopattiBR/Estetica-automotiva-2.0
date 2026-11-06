@@ -24,6 +24,7 @@ export interface Cliente {
   telefone: string;
   veiculo: string;
   placa: string;
+  endereco?: string;
   servicosRealizados: number;
   totalGasto: number;
   dataCadastro: string;

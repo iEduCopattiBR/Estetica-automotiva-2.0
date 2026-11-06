@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Wifi, WifiOff, RefreshCw, LogOut, Shield, Trash2, CheckCircle2, Smartphone, Download } from 'lucide-react';
+import { X, Wifi, WifiOff, RefreshCw, LogOut, Shield, CheckCircle2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { GoogleAuthUser } from '../types';
 
@@ -9,7 +9,7 @@ interface SettingsModalProps {
   authUser: GoogleAuthUser | null;
   onOpenLogin: () => void;
   onLogout: () => void;
-  onDataReset: () => void;
+  onDataReset?: () => void;
   isOnline: boolean;
   onToggleOnline?: (status: boolean) => void;
 }
@@ -20,7 +20,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   authUser,
   onOpenLogin,
   onLogout,
-  onDataReset,
   isOnline,
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
@@ -35,14 +34,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setSyncMessage(res.message);
       setIsSyncing(false);
     });
-  };
-
-  const handleReset = () => {
-    if (window.confirm('Atenção: Deseja apagar todos os clientes, agendamentos e históricos para começar o app 100% do zero com seus dados reais?')) {
-      storageService.clearAllData(true);
-      onDataReset();
-      setSyncMessage('Todos os dados foram apagados com sucesso! O sistema está pronto para uso a partir do zero.');
-    }
   };
 
   const handleSwitchGoogleAccount = () => {
@@ -113,11 +104,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#111113] border border-zinc-800">
                   <div className="flex items-center gap-2.5">
-                    <img
-                      src={authUser.photoUrl}
-                      alt={authUser.displayName}
-                      className="w-8 h-8 rounded-full border border-zinc-700"
-                    />
+                    <div className="w-8 h-8 rounded-full border border-zinc-700 bg-[#E50914]/20 text-[#E50914] flex items-center justify-center text-xs font-bold">
+                      {(authUser.displayName || authUser.email || '?').charAt(0).toUpperCase()}
+                    </div>
                     <div>
                       <p className="text-xs font-bold text-white">{authUser.displayName}</p>
                       <p className="text-[11px] text-zinc-400">{authUser.email}</p>
@@ -159,7 +148,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={onOpenLogin}
                   className="w-full py-2.5 bg-white hover:bg-zinc-100 text-zinc-900 font-bold text-xs rounded-xl flex items-center justify-center gap-2 cursor-pointer transition shadow-md"
                 >
-                  <span>Conectar Qualquer Conta Google (Sign-In)</span>
+                  <span>Conectar Conta Google</span>
                 </button>
               </div>
             )}
@@ -172,66 +161,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
-          {/* 3. Instalar Aplicativo no Telefone (APK & PWA) */}
-          <div className="p-4 rounded-xl bg-[#1C1C22] border border-[#282830]">
-            <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-xl bg-[#E50914]/15 border border-[#E50914]/30 flex items-center justify-center text-[#E50914] shrink-0">
-                <Smartphone size={18} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  Instalar App no Telefone
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30">
-                    APK PRONTO
-                  </span>
-                </h3>
-                <p className="text-xs text-zinc-400">Poco F5 / Poco F7 / Xiaomi e Android</p>
-              </div>
-            </div>
-
-            <a
-              href="/SchmittDetailer.apk"
-              download="SchmittDetailer.apk"
-              className="w-full py-3 px-4 bg-gradient-to-r from-[#E50914] to-[#B3060F] hover:brightness-110 active:scale-[0.99] text-white font-extrabold text-xs sm:text-sm rounded-xl shadow-lg shadow-[#E50914]/30 flex items-center justify-center gap-2.5 transition text-center cursor-pointer"
-            >
-              <Download size={18} />
-              <span>BAIXAR ARQUIVO APK ATUALIZADO (6.1 MB)</span>
-            </a>
-
-            <div className="mt-3 p-3 bg-[#111114] rounded-xl border border-zinc-800 text-[11px] text-zinc-300 space-y-1.5">
-              <p className="font-semibold text-white">Como instalar no seu Poco/Xiaomi:</p>
-              <p>1️⃣ Toque no botão vermelho acima para baixar o <code className="text-[#E50914]">SchmittDetailer.apk</code>.</p>
-              <p>2️⃣ Abra o app <strong>Gerenciador de Arquivos &gt; Downloads</strong> do seu telefone e toque no arquivo para instalar.</p>
-              <p className="text-zinc-400 pt-0.5">
-                💡 <em>Dica:</em> Você também pode tocar nos <strong>3 pontinhos do Chrome &gt; &quot;Instalar aplicativo&quot;</strong> para instalar instantaneamente sem precisar autorizar APK externo.
-              </p>
-            </div>
-          </div>
-
-          {/* 4. Reset & Clean local DB */}
-          <div className="p-4 rounded-xl bg-red-950/20 border border-red-900/40">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h4 className="text-xs font-bold text-red-300 flex items-center gap-1.5">
-                  <Trash2 size={14} className="text-red-400" />
-                  Zerar Todos os Dados (Começar do Zero)
-                </h4>
-                <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">
-                  Apaga todos os clientes pré-cadastrados, agendamentos e históricos para que a estética comece a registrar apenas dados reais.
-                </p>
-              </div>
-              <button
-                onClick={handleReset}
-                className="px-3 py-1.5 bg-red-600/80 hover:bg-red-600 text-white font-bold text-xs rounded-xl cursor-pointer transition shrink-0 active:scale-95 shadow-sm"
-              >
-                Limpar Banco
-              </button>
-            </div>
-          </div>
-
           <div className="pt-2 flex items-center justify-between border-t border-zinc-800 text-[11px] text-zinc-500">
             <span>Schmitt Detailer • Modo Operação Real</span>
-            <span>v1.1.0</span>
+            <span>v1.1.3</span>
           </div>
         </div>
       </div>

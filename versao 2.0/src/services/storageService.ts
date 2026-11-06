@@ -9,132 +9,6 @@ const AUTH_KEY = 'schmitt_detailer_google_auth';
 const PENDING_DELETES_KEY = 'schmitt_detailer_pending_deletes';
 const NETWORK_SIMULATION_KEY = 'schmitt_detailer_is_online';
 
-const DEFAULT_PRODUTOS: Produto[] = [
-  {
-    id: 'prod-1',
-    nome: 'Shampoo Automotivo Neutro V-Floc',
-    unidade: 'ml',
-    precoPago: 85.0,
-    quantidadeEmbalagem: 3000,
-    custoUnitario: 85.0 / 3000,
-    ativo: true,
-  },
-  {
-    id: 'prod-2',
-    nome: 'Desengraxante / APC Sintra Pro',
-    unidade: 'ml',
-    precoPago: 65.0,
-    quantidadeEmbalagem: 1500,
-    custoUnitario: 65.0 / 1500,
-    ativo: true,
-  },
-  {
-    id: 'prod-3',
-    nome: 'Cera de Carnaúba Blend Ceramic',
-    unidade: 'g',
-    precoPago: 120.0,
-    quantidadeEmbalagem: 100,
-    custoUnitario: 120.0 / 100,
-    ativo: true,
-  },
-  {
-    id: 'prod-4',
-    nome: 'Composto Polidor Corte & Refino V10/V20',
-    unidade: 'g',
-    precoPago: 160.0,
-    quantidadeEmbalagem: 500,
-    custoUnitario: 160.0 / 500,
-    ativo: true,
-  },
-  {
-    id: 'prod-5',
-    nome: 'Condicionador de Plásticos & Pneus',
-    unidade: 'ml',
-    precoPago: 50.0,
-    quantidadeEmbalagem: 1000,
-    custoUnitario: 50.0 / 1000,
-    ativo: true,
-  },
-  {
-    id: 'prod-6',
-    nome: 'Selante SiO2 Paint Rubber',
-    unidade: 'ml',
-    precoPago: 140.0,
-    quantidadeEmbalagem: 500,
-    custoUnitario: 140.0 / 500,
-    ativo: true,
-  },
-  {
-    id: 'prod-7',
-    nome: 'Flanela Microfibra 40x40 350GSM',
-    unidade: 'unidade',
-    precoPago: 15.0,
-    quantidadeEmbalagem: 1,
-    custoUnitario: 15.0,
-    ativo: true,
-  },
-];
-
-const DEFAULT_TIPOS_SERVICO: TipoServico[] = [
-  {
-    id: 'srv-1',
-    nome: 'Lavagem Técnica Detalhada + Cera',
-    descricao: 'Lavagem detalhada de caixas de roda, pincelamento e cera de carnaúba.',
-    precoPadrao: 180.0,
-    duracaoMinutos: 120,
-    produtos: [
-      { produtoId: 'prod-1', quantidadeUtilizada: 60 },
-      { produtoId: 'prod-2', quantidadeUtilizada: 40 },
-      { produtoId: 'prod-3', quantidadeUtilizada: 15 },
-      { produtoId: 'prod-5', quantidadeUtilizada: 30 },
-    ],
-    ativo: true,
-  },
-  {
-    id: 'srv-2',
-    nome: 'Higienização Interna Completa',
-    descricao: 'Higienização profunda dos bancos, carpete, forro, painel e portas.',
-    precoPadrao: 380.0,
-    duracaoMinutos: 240,
-    produtos: [
-      { produtoId: 'prod-2', quantidadeUtilizada: 200 },
-      { produtoId: 'prod-5', quantidadeUtilizada: 40 },
-      { produtoId: 'prod-7', quantidadeUtilizada: 1 },
-    ],
-    ativo: true,
-  },
-  {
-    id: 'srv-3',
-    nome: 'Polimento Técnico Comercial + Selante',
-    descricao: 'Descontaminação, polimento técnico e proteção selante SiO2.',
-    precoPadrao: 650.0,
-    duracaoMinutos: 360,
-    produtos: [
-      { produtoId: 'prod-1', quantidadeUtilizada: 80 },
-      { produtoId: 'prod-4', quantidadeUtilizada: 80 },
-      { produtoId: 'prod-6', quantidadeUtilizada: 35 },
-      { produtoId: 'prod-7', quantidadeUtilizada: 2 },
-    ],
-    ativo: true,
-  },
-  {
-    id: 'srv-4',
-    nome: 'Vitrificação de Pintura Cerâmica 9H',
-    descricao: 'Polimento minucioso, desengraxe total e vitrificador cerâmico até 3 anos.',
-    precoPadrao: 1500.0,
-    duracaoMinutos: 480,
-    produtos: [
-      { produtoId: 'prod-1', quantidadeUtilizada: 100 },
-      { produtoId: 'prod-2', quantidadeUtilizada: 100 },
-      { produtoId: 'prod-4', quantidadeUtilizada: 120 },
-      { produtoId: 'prod-6', quantidadeUtilizada: 50 },
-      { produtoId: 'prod-7', quantidadeUtilizada: 3 },
-    ],
-    ativo: true,
-  },
-];
-
-
 // In-memory fallback map for environments where localStorage is restricted or throws SecurityError (e.g. WebView)
 const memoryStorage: Record<string, string> = {};
 
@@ -331,6 +205,24 @@ export const storageService = {
     return newCli;
   },
 
+  updateCliente(id: string, updates: Partial<Omit<Cliente, 'id'>>): Cliente | null {
+    const list = this.getClientes();
+    const idx = list.findIndex((c) => c.id === id);
+    if (idx === -1) return null;
+    const updated: Cliente = { ...list[idx], ...updates, id: list[idx].id };
+    list[idx] = updated;
+    safeSetItem(CLIENTES_KEY, JSON.stringify(list));
+    return updated;
+  },
+
+  deleteCliente(id: string): boolean {
+    const list = this.getClientes();
+    const filtered = list.filter((c) => c.id !== id);
+    if (filtered.length === list.length) return false;
+    safeSetItem(CLIENTES_KEY, JSON.stringify(filtered));
+    return true;
+  },
+
   // Auth management
   getGoogleAuth(): GoogleAuthUser | null {
     const raw = safeGetItem(AUTH_KEY);
@@ -429,15 +321,12 @@ export const storageService = {
   // --- PRODUTOS & INSUMOS ---
   getProdutos(): Produto[] {
     const raw = safeGetItem(PRODUTOS_KEY);
-    if (!raw) {
-      safeSetItem(PRODUTOS_KEY, JSON.stringify(DEFAULT_PRODUTOS));
-      return DEFAULT_PRODUTOS;
-    }
+    if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PRODUTOS;
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
-      return DEFAULT_PRODUTOS;
+      return [];
     }
   },
 
@@ -491,15 +380,12 @@ export const storageService = {
   // --- TIPOS DE SERVIÇO & COMBOS ---
   getTiposServico(): TipoServico[] {
     const raw = safeGetItem(TIPOS_SERVICO_KEY);
-    if (!raw) {
-      safeSetItem(TIPOS_SERVICO_KEY, JSON.stringify(DEFAULT_TIPOS_SERVICO));
-      return DEFAULT_TIPOS_SERVICO;
-    }
+    if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_TIPOS_SERVICO;
+      return Array.isArray(parsed) ? parsed : [];
     } catch {
-      return DEFAULT_TIPOS_SERVICO;
+      return [];
     }
   },
 

@@ -12,6 +12,7 @@ import { ReportsView } from './components/ReportsView';
 import { GoogleLoginModal } from './components/GoogleLoginModal';
 import { NewAppointmentModal } from './components/NewAppointmentModal';
 import { NewClientModal } from './components/NewClientModal';
+import { ClientDetailModal } from './components/ClientDetailModal';
 import { SearchClientModal } from './components/SearchClientModal';
 import { AppointmentDetailModal } from './components/AppointmentDetailModal';
 import { SettingsModal } from './components/SettingsModal';
@@ -44,6 +45,7 @@ export default function App() {
   const [isSearchClientOpen, setIsSearchClientOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
+  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
   // Servicos & Produtos modals
   const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
@@ -217,7 +219,7 @@ export default function App() {
           <ClientsView
             clientes={clientes}
             onOpenCadastrarCliente={() => setIsNewClientOpen(true)}
-            onSelectCliente={() => {}}
+            onSelectCliente={(c) => setSelectedCliente(c)}
           />
         )}
 
@@ -306,6 +308,19 @@ export default function App() {
         onSuccess={(client) => {
           refreshData();
           showToast(`Cliente ${client.nome} cadastrado com sucesso!`);
+        }}
+      />
+
+      <ClientDetailModal
+        cliente={selectedCliente}
+        onClose={() => setSelectedCliente(null)}
+        onSaved={(client) => {
+          refreshData();
+          showToast(`Cliente ${client.nome} atualizado com sucesso!`);
+        }}
+        onDeleted={(client) => {
+          refreshData();
+          showToast(`Cliente ${client.nome} excluído.`);
         }}
       />
 

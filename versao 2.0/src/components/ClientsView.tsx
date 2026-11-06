@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, Search, Phone, Car, ChevronRight, DollarSign, Wrench } from 'lucide-react';
+import { UserPlus, Search, Phone, Car, ChevronRight, DollarSign, Wrench, MapPin } from 'lucide-react';
 import { Cliente } from '../types';
 
 interface ClientsViewProps {
@@ -11,6 +11,7 @@ interface ClientsViewProps {
 export const ClientsView: React.FC<ClientsViewProps> = ({
   clientes,
   onOpenCadastrarCliente,
+  onSelectCliente,
 }) => {
   const [search, setSearch] = useState('');
 
@@ -18,7 +19,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     (c) =>
       c.nome.toLowerCase().includes(search.toLowerCase()) ||
       c.veiculo.toLowerCase().includes(search.toLowerCase()) ||
-      c.placa.toLowerCase().includes(search.toLowerCase())
+      c.placa.toLowerCase().includes(search.toLowerCase()) ||
+      (c.endereco || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -44,7 +46,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Buscar por nome, modelo ou placa..."
+          placeholder="Buscar por nome, veículo, endereço ou placa..."
           className="w-full bg-[#141418] border border-[#26262E] rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder:text-zinc-500 focus:outline-none focus:border-[#E50914]"
         />
       </div>
@@ -77,28 +79,33 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           {filtered.map((cli) => (
             <div
               key={cli.id}
-              className="p-4 rounded-2xl bg-[#141418] border border-[#24242C] hover:border-zinc-700 transition flex items-center justify-between group shadow-[0_4px_16px_rgba(0,0,0,0.3)]"
+              onClick={() => onSelectCliente && onSelectCliente(cli)}
+              className="p-4 rounded-2xl bg-[#141418] border border-[#24242C] hover:border-zinc-700 transition flex items-center justify-between gap-3 group shadow-[0_4px_16px_rgba(0,0,0,0.3)] cursor-pointer active:scale-[0.99]"
             >
-              <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-sm text-white group-hover:text-[#E50914] transition">
-                    {cli.nome}
-                  </h4>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
-                    {cli.placa}
-                  </span>
+              <div className="min-w-0">
+                <h4 className="font-bold text-base text-white group-hover:text-[#E50914] transition truncate">
+                  {cli.nome}
+                </h4>
+
+                <div className="mt-1.5 space-y-1">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-zinc-100">
+                    <Car size={14} className="text-[#E50914] shrink-0" />
+                    <span className="truncate">{cli.veiculo}</span>
+                  </div>
+                  <div className="flex items-start gap-1.5 text-sm font-semibold text-zinc-100">
+                    <MapPin size={14} className="text-[#E50914] shrink-0 mt-0.5" />
+                    <span className={cli.endereco ? '' : 'text-zinc-500 font-normal italic'}>
+                      {cli.endereco || 'Endereço não informado'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-zinc-400">
-                  <span className="flex items-center gap-1 text-zinc-300">
-                    <Car size={13} className="text-[#E50914]" /> {cli.veiculo}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Phone size={12} className="text-zinc-500" /> {cli.telefone}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-400">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-zinc-400">
+                  {cli.telefone && (
+                    <span className="flex items-center gap-1">
+                      <Phone size={11} className="text-zinc-500" /> {cli.telefone}
+                    </span>
+                  )}
                   <span className="flex items-center gap-1">
                     <Wrench size={11} className="text-zinc-500" /> {cli.servicosRealizados} serviços
                   </span>

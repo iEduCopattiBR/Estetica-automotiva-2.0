@@ -23,10 +23,10 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
   const [clienteVeiculo, setClienteVeiculo] = useState('');
   const [endereco, setEndereco] = useState('');
   const [servicoTipo, setServicoTipo] = useState(() =>
-    servicosCadastrados.length > 0 ? servicosCadastrados[0].nome : 'Lavagem Detalhada'
+    servicosCadastrados.length > 0 ? servicosCadastrados[0].nome : ''
   );
   const [preco, setPreco] = useState(() =>
-    servicosCadastrados.length > 0 ? servicosCadastrados[0].precoPadrao : 180
+    servicosCadastrados.length > 0 ? servicosCadastrados[0].precoPadrao : 0
   );
   const [data, setData] = useState(() => new Date().toISOString().split('T')[0]);
   const [hora, setHora] = useState('14:00');
@@ -42,6 +42,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
       setClienteNome(cli.nome);
       setClienteTelefone(cli.telefone);
       setClienteVeiculo(`${cli.veiculo} (${cli.placa})`);
+      setEndereco(cli.endereco || '');
     } else {
       setSelectedClientId('');
     }
@@ -60,7 +61,7 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clienteNome.trim()) return;
+    if (!clienteNome.trim() || !servicoTipo) return;
 
     const fullDateTime = `${data}T${hora}:00`;
 
@@ -197,8 +198,11 @@ export const NewAppointmentModal: React.FC<NewAppointmentModalProps> = ({
                     {s.nome} (R$ {s.precoPadrao.toFixed(2)})
                   </option>
                 ))}
+                {servicosCadastrados.length === 0 && (
+                  <option value="">Nenhum serviço cadastrado (cadastre na aba Serviços)</option>
+                )}
                 {/* Opção livre caso não esteja na lista */}
-                {!servicosCadastrados.some((s) => s.nome === servicoTipo) && (
+                {servicoTipo && !servicosCadastrados.some((s) => s.nome === servicoTipo) && (
                   <option value={servicoTipo}>{servicoTipo}</option>
                 )}
               </select>
