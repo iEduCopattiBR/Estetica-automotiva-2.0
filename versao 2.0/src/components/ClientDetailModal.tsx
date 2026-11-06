@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, User, Car, Phone, Shield, MapPin, Trash2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Cliente } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface ClientDetailModalProps {
   cliente: Cliente | null;
@@ -43,6 +44,7 @@ const ClientForm: React.FC<{
   const [veiculo, setVeiculo] = useState(cliente.veiculo || '');
   const [placa, setPlaca] = useState(cliente.placa || '');
   const [endereco, setEndereco] = useState(cliente.endereco || '');
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,14 +61,18 @@ const ClientForm: React.FC<{
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Excluir o cliente ${cliente.nome}? Os agendamentos já feitos continuam na agenda.`)) {
-      storageService.deleteCliente(cliente.id);
-      onDeleted(cliente);
-      onClose();
-    }
+    setConfirmOpen(true);
+  };
+
+  const doDelete = () => {
+    setConfirmOpen(false);
+    storageService.deleteCliente(cliente.id);
+    onDeleted(cliente);
+    onClose();
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="w-full max-w-md bg-[#161619] border border-[#282830] rounded-2xl p-6 shadow-2xl text-white max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
@@ -175,5 +181,12 @@ const ClientForm: React.FC<{
         </form>
       </div>
     </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        message={`Excluir o cliente ${cliente.nome}? Os agendamentos já feitos continuam na agenda.`}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 };

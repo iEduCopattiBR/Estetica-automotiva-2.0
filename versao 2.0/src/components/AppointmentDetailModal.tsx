@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Calendar, Clock, DollarSign, Car, Phone, Trash2, Cloud, CloudOff, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Agendamento, StatusAgendamento } from '../types';
+import { ConfirmDialog } from './ConfirmDialog';
 
 interface AppointmentDetailModalProps {
   agendamento: Agendamento | null;
@@ -20,6 +21,7 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
 }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   if (!isOpen || !agendamento) return null;
 
@@ -40,13 +42,16 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   };
 
   const handleDelete = () => {
-    if (window.confirm(`Tem certeza que deseja excluir o agendamento de ${agendamento.clienteNome}?`)) {
-      setIsDeleting(true);
-      storageService.deleteAgendamento(agendamento.id);
-      setIsDeleting(false);
-      onDeleted();
-      onClose();
-    }
+    setConfirmOpen(true);
+  };
+
+  const doDelete = () => {
+    setConfirmOpen(false);
+    setIsDeleting(true);
+    storageService.deleteAgendamento(agendamento.id);
+    setIsDeleting(false);
+    onDeleted();
+    onClose();
   };
 
   const handleManualSync = () => {
@@ -58,6 +63,7 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="w-full max-w-md bg-[#161619] border border-[#282830] rounded-2xl p-6 shadow-2xl text-white">
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
@@ -217,5 +223,12 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
         </div>
       </div>
     </div>
+      <ConfirmDialog
+        open={confirmOpen}
+        message={`Tem certeza que deseja excluir o agendamento de ${agendamento.clienteNome}?`}
+        onConfirm={doDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
+    </>
   );
 };
