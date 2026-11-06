@@ -11,7 +11,6 @@ import {
   Play,
   Cloud,
   CloudOff,
-  Wrench,
 } from 'lucide-react';
 import { Agendamento, Cliente } from '../types';
 
@@ -176,29 +175,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <ChevronRight size={18} className="text-zinc-500 group-hover:text-white transition" />
         </button>
       </div>
-
-      {/* Serviços & Insumos Fast Access Banner */}
-      {onOpenServicos && (
-        <button
-          onClick={onOpenServicos}
-          className="w-full mt-3 p-3.5 rounded-2xl bg-[#141418] border border-[#26262E] hover:border-[#E50914]/50 transition-all flex items-center justify-between text-left cursor-pointer group shadow-sm"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#E50914]/10 border border-[#E50914]/20 flex items-center justify-center text-[#E50914]">
-              <Wrench size={18} />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-white block">
-                Catálogo de Serviços & Insumos
-              </span>
-              <span className="text-[11px] text-zinc-400">
-                Personalizar valores cobrados, doses e margem de lucro
-              </span>
-            </div>
-          </div>
-          <ChevronRight size={16} className="text-zinc-500 group-hover:text-[#E50914] transition" />
-        </button>
-      )}
 
       {/* 3. Section: Agendamentos */}
       <div className="mt-7">

@@ -163,7 +163,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
           <div className="pt-2 flex items-center justify-between border-t border-zinc-800 text-[11px] text-zinc-500">
             <span>Schmitt Detailer • Modo Operação Real</span>
-            <span>v1.1.4</span>
+            <span>v1.1.5</span>
           </div>
         </div>
       </div>
