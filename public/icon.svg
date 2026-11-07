@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#121215" />
+      <stop offset="100%" stop-color="#08080A" />
+    </linearGradient>
+    <linearGradient id="redGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF1A24" />
+      <stop offset="100%" stop-color="#B80710" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="512" height="512" rx="110" fill="url(#bg)" stroke="#282832" stroke-width="6"/>
+
+  <!-- Subtle ambient red circle -->
+  <circle cx="256" cy="256" r="170" fill="#E50914" opacity="0.12" filter="url(#glow)"/>
+
+  <!-- Automotive Shield / Diamond silhouette -->
+  <path d="M256 95 L405 175 L380 345 L256 425 L132 345 L107 175 Z" fill="none" stroke="#2c2c36" stroke-width="4"/>
+  <path d="M256 115 L385 185 L365 330 L256 400 L147 330 L127 185 Z" fill="none" stroke="url(#redGlow)" stroke-width="5" filter="url(#glow)"/>
+
+  <!-- Center 'S' Stylized Automotive Emblem -->
+  <g transform="translate(256, 256) scale(1.1) translate(-256, -256)">
+    <!-- Racing Speed Slash -->
+    <path d="M160 180 L350 180 L320 225 L210 225 L190 265 L330 265 L300 340 L140 340 L165 295 L275 295 L290 265" fill="none" stroke="url(#redGlow)" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="340" cy="180" r="14" fill="#ffffff"/>
+    <circle cx="150" cy="340" r="14" fill="#ffffff"/>
+  </g>
+
+  <!-- Text Schmitt Detailer -->
+  <text x="256" y="445" font-family="system-ui, sans-serif" font-size="28" font-weight="900" font-style="italic" fill="#ffffff" text-anchor="middle" letter-spacing="4">
+    SCHMITT
+  </text>
+  <text x="256" y="475" font-family="system-ui, sans-serif" font-size="18" font-weight="900" fill="#E50914" text-anchor="middle" letter-spacing="6">
+    DETAILER
+  </text>
+</svg>
