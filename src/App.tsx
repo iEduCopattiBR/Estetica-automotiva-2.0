@@ -21,6 +21,7 @@ import { ServiceModal } from './components/ServiceModal';
 import { ProductModal } from './components/ProductModal';
 import { storageService } from './services/storageService';
 import * as googleCalendar from './services/googleCalendar';
+import * as reminders from './services/reminders';
 import { Agendamento, Cliente, GoogleAuthUser, TipoServico, Produto } from './types';
 
 export default function App() {
@@ -61,6 +62,11 @@ export default function App() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
   };
+
+  // Lembretes: sempre que os agendamentos mudam, reenvia a lista ao Android
+  useEffect(() => {
+    reminders.scheduleReminders(agendamentos);
+  }, [agendamentos]);
 
   // Fluxo de inicialização e checagem de rede nativa
   useEffect(() => {
@@ -371,6 +377,7 @@ export default function App() {
         }}
         isOnline={isOnline}
         onToggleOnline={handleToggleOnline}
+        onSynced={refreshData}
       />
 
       <ServiceModal

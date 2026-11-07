@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { X, Wifi, WifiOff, RefreshCw, LogOut, Shield, CheckCircle2 } from 'lucide-react';
+import { X, Wifi, WifiOff, RefreshCw, LogOut, Shield, CheckCircle2, Bell } from 'lucide-react';
 import { storageService } from '../services/storageService';
+import * as googleCalendar from '../services/googleCalendar';
+import * as reminders from '../services/reminders';
 import { GoogleAuthUser } from '../types';
 
 interface SettingsModalProps {
@@ -12,6 +14,7 @@ interface SettingsModalProps {
   onDataReset?: () => void;
   isOnline: boolean;
   onToggleOnline?: (status: boolean) => void;
+  onSynced?: () => void;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -21,9 +24,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onOpenLogin,
   onLogout,
   isOnline,
+  onSynced,
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
+  const [leadMin, setLeadMin] = useState<number>(() => reminders.getLeadMinutes());
+  const [dailyOn, setDailyOn] = useState<boolean>(() => reminders.getDailyEnabled());
+  const [dailyTime, setDailyTime] = useState<string>(() => reminders.getDailyTime());
 
   if (!isOpen) return null;
 
@@ -33,7 +40,28 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     storageService.syncPendingToGoogleCalendar().then((res) => {
       setSyncMessage(res.message);
       setIsSyncing(false);
+      if (onSynced) onSynced();
     });
+  };
+
+  const handleLeadChange = (value: number) => {
+    setLeadMin(value);
+    reminders.setLeadMinutes(value);
+    reminders.scheduleReminders(storageService.getAgendamentos());
+  };
+
+  const handleDailyToggle = (on: boolean) => {
+    setDailyOn(on);
+    reminders.setDailyEnabled(on);
+    reminders.scheduleReminders(storageService.getAgendamentos());
+  };
+
+  const handleDailyTime = (value: string) => {
+    setDailyTime(value);
+    if (/^\d{2}:\d{2}$/.test(value)) {
+      reminders.setDailyTime(value);
+      reminders.scheduleReminders(storageService.getAgendamentos());
+    }
   };
 
   const handleSwitchGoogleAccount = () => {
@@ -121,6 +149,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   </button>
                 </div>
 
+                <div className="text-[10px] text-zinc-500 space-y-0.5 px-1">
+                  <p>
+                    Neste celular: {storageService.getClientes().length} cliente(s) •{' '}
+                    {storageService.getTiposServico().length} serviço(s) • {storageService.getProdutos().length} insumo(s) •{' '}
+                    {storageService.getAgendamentos().length} agendamento(s)
+                  </p>
+                  {googleCalendar.getLastSync() && (
+                    <p>
+                      Última sincronização:{' '}
+                      {new Date(googleCalendar.getLastSync()!.at).toLocaleString('pt-BR')} —{' '}
+                      <span className={googleCalendar.getLastSync()!.ok ? 'text-emerald-400' : 'text-red-400'}>
+                        {googleCalendar.getLastSync()!.message}
+                      </span>
+                    </p>
+                  )}
+                </div>
+
                 <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
                   <button
                     onClick={handleManualSync}
@@ -161,9 +206,93 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             )}
           </div>
 
+          {/* Lembretes de atendimento */}
+          {reminders.isAvailable() && (
+            <div className="p-3.5 rounded-xl bg-[#111113] border border-zinc-800 space-y-3">
+              <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
+                <Bell size={13} className="text-[#E50914]" />
+                Lembretes de atendimento
+              </h3>
+
+              <div>
+                <label className="block text-[11px] text-zinc-400 mb-1.5">Avisar antes do horário</label>
+                <div className="grid grid-cols-4 gap-1.5">
+                  {reminders.LEAD_OPTIONS.map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => handleLeadChange(m)}
+                      className={`py-2 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                        leadMin === m
+                          ? 'bg-[#E50914] border-[#E50914] text-white'
+                          : 'bg-zinc-900 border-zinc-700 text-zinc-300 hover:border-zinc-500'
+                      }`}
+                    >
+                      {m === 0 ? 'Desligado' : `${m} min`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => reminders.sendTest()}
+                className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-bold rounded-xl border border-zinc-700/60 cursor-pointer transition"
+              >
+                Enviar notificação de teste
+              </button>
+
+              <div className="pt-3 border-t border-zinc-800 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-zinc-200">Resumo do dia, de manhã</p>
+                    <p className="text-[10px] text-zinc-500">Lista os atendimentos do dia: horário, cliente e serviço</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDailyToggle(!dailyOn)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                      dailyOn
+                        ? 'bg-[#E50914] border-[#E50914] text-white'
+                        : 'bg-zinc-900 border-zinc-700 text-zinc-300'
+                    }`}
+                  >
+                    {dailyOn ? 'Ligado' : 'Desligado'}
+                  </button>
+                </div>
+
+                {dailyOn && (
+                  <div className="flex items-center justify-between gap-3">
+                    <label className="text-[11px] text-zinc-400">Horário do aviso</label>
+                    <input
+                      type="time"
+                      value={dailyTime}
+                      onChange={(e) => handleDailyTime(e.target.value)}
+                      className="bg-[#0d0d10] border border-[#2b2b34] rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#E50914]"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => reminders.sendDailyTest(storageService.getAgendamentos())}
+                  className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-bold rounded-xl border border-zinc-700/60 cursor-pointer transition"
+                >
+                  Testar resumo do dia
+                </button>
+              </div>
+
+              <p className="text-[10px] text-zinc-500 leading-relaxed">
+                O aviso antes do horário mostra o cliente, o endereço e o serviço, e só vale para agendamentos
+                "Agendado". O resumo do dia não é enviado nos dias sem atendimento. Se um teste não aparecer,
+                permita as notificações do app nas configurações do celular.
+              </p>
+            </div>
+          )}
+
           <div className="pt-2 flex items-center justify-between border-t border-zinc-800 text-[11px] text-zinc-500">
             <span>Schmitt Detailer • Modo Operação Real</span>
-            <span>v1.2.1</span>
+            <span>v1.4.0</span>
           </div>
         </div>
       </div>

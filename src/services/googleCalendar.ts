@@ -26,6 +26,30 @@ const DATA_CAL_ID_KEY = 'schmitt_detailer_data_calendar_id';
 const DATA_STATE_KEY = 'schmitt_detailer_data_state';
 const DATA_LAST_PULL_KEY = 'schmitt_detailer_data_last_pull';
 const LAST_ACCOUNT_KEY = 'schmitt_detailer_last_account';
+const LAST_SYNC_KEY = 'schmitt_detailer_last_sync';
+
+export interface LastSyncInfo {
+  at: string;
+  ok: boolean;
+  message: string;
+}
+
+export function getLastSync(): LastSyncInfo | null {
+  try {
+    const raw = localStorage.getItem(LAST_SYNC_KEY);
+    return raw ? (JSON.parse(raw) as LastSyncInfo) : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordSync(ok: boolean, message: string): void {
+  try {
+    localStorage.setItem(LAST_SYNC_KEY, JSON.stringify({ at: new Date().toISOString(), ok, message }));
+  } catch {
+    /* ignore */
+  }
+}
 
 export interface SyncResult {
   syncedCount: number;
@@ -174,46 +198,104 @@ function resetForNewAccount(): void {
 
 // ---------------------------------------------------------------- agenda dedicada
 
-async function ensureNamedCalendar(name: string, cacheKey: string, hideFromView = false): Promise<string> {
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) return cached;
+const sessionChecked = new Set<string>();
 
+async function listCalendarIdsByName(name: string): Promise<string[]> {
+  const ids: string[] = [];
   let pageToken = '';
   do {
     const res = await api(`/users/me/calendarList?maxResults=250${pageToken ? '&pageToken=' + pageToken : ''}`);
     await failIfNotOk(res, 'Falha ao listar agendas');
     const data = await res.json();
-    const found = (data.items || []).find(
-      (c: { summary?: string; summaryOverride?: string; accessRole?: string }) =>
-        (c.summary === name || c.summaryOverride === name) &&
-        (c.accessRole === 'owner' || c.accessRole === 'writer')
-    );
-    if (found) {
-      localStorage.setItem(cacheKey, found.id);
-      return found.id as string;
+    for (const c of (data.items || []) as { id: string; summary?: string; summaryOverride?: string; accessRole?: string }[]) {
+      if ((c.summary === name || c.summaryOverride === name) && (c.accessRole === 'owner' || c.accessRole === 'writer')) {
+        ids.push(c.id);
+      }
     }
     pageToken = data.nextPageToken || '';
   } while (pageToken);
-
-  const created = await api('/calendars', {
-    method: 'POST',
-    body: { summary: name, description: 'Dados do Schmitt Detailer ' + TAG, timeZone: timeZone() },
-  });
-  await failIfNotOk(created, `Falha ao criar a agenda "${name}"`);
-  const cal = await created.json();
-  localStorage.setItem(cacheKey, cal.id);
-
-  if (hideFromView) {
-    // esconde a agenda de dados da visualização normal do Google Agenda
-    await api(`/users/me/calendarList/${encodeURIComponent(cal.id)}`, {
-      method: 'PATCH',
-      body: { selected: false },
-    });
-  }
-  return cal.id as string;
+  // ordem fixa: todos os celulares escolhem a mesma agenda se houver duplicadas
+  return ids.sort();
 }
 
-const ensureCalendar = () => ensureNamedCalendar(CAL_NAME, CAL_ID_KEY);
+async function ensureNamedCalendar(
+  name: string,
+  cacheKey: string,
+  hideFromView = false,
+  onSwitch?: () => void
+): Promise<string> {
+  const cached = localStorage.getItem(cacheKey);
+  if (cached && sessionChecked.has(cacheKey)) return cached;
+
+  let matches = await listCalendarIdsByName(name);
+  let id: string;
+
+  if (matches.length > 0) {
+    id = matches[0];
+  } else {
+    const created = await api('/calendars', {
+      method: 'POST',
+      body: { summary: name, description: 'Dados do Schmitt Detailer ' + TAG, timeZone: timeZone() },
+    });
+    await failIfNotOk(created, `Falha ao criar a agenda "${name}"`);
+    const cal = await created.json();
+    id = cal.id as string;
+
+    if (hideFromView) {
+      // esconde a agenda de dados da visualização normal; se falhar, não é grave
+      try {
+        await api(`/users/me/calendarList/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          body: { selected: false },
+        });
+      } catch {
+        /* ignore */
+      }
+    }
+
+    // outro celular pode ter criado a mesma agenda ao mesmo tempo: fica só uma
+    try {
+      matches = await listCalendarIdsByName(name);
+      if (matches.length > 1 && matches[0] !== id) {
+        await api(`/calendars/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        id = matches[0];
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+
+  if (cached && cached !== id && onSwitch) onSwitch();
+  localStorage.setItem(cacheKey, id);
+  sessionChecked.add(cacheKey);
+  return id;
+}
+
+function resetAppointmentSync(): void {
+  try {
+    localStorage.removeItem(LAST_PULL_KEY);
+  } catch {
+    /* ignore */
+  }
+  const list = storageService.getAgendamentos().map((a) => ({
+    ...a,
+    isSynced: false,
+    googleEventId: undefined,
+    googleUpdated: undefined,
+  }));
+  storageService.saveAgendamentos(list);
+}
+
+function resetDataSync(): void {
+  try {
+    localStorage.removeItem(DATA_STATE_KEY);
+    localStorage.removeItem(DATA_LAST_PULL_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+const ensureCalendar = () => ensureNamedCalendar(CAL_NAME, CAL_ID_KEY, false, resetAppointmentSync);
 
 // ---------------------------------------------------------------- conversões
 
@@ -505,7 +587,7 @@ function parseDataEvent(ev: GEvent): { kind: Kind; d: Record<string, unknown> } 
 }
 
 async function syncData(): Promise<{ pushed: number; pulled: number; removed: number }> {
-  const cal = await ensureNamedCalendar(DATA_CAL_NAME, DATA_CAL_ID_KEY, true);
+  const cal = await ensureNamedCalendar(DATA_CAL_NAME, DATA_CAL_ID_KEY, true, resetDataSync);
   const base = `/calendars/${encodeURIComponent(cal)}/events`;
   const state = loadState();
   const startedAt = new Date(Date.now() - 60 * 1000).toISOString();
@@ -725,6 +807,8 @@ export async function syncAll(): Promise<SyncResult> {
 
     // 4) cadastros: clientes, serviços e insumos
     const dataResult = await syncData();
+    const st = loadState();
+    const cadastros = `Cadastros na nuvem: ${Object.keys(st.cliente).length} cliente(s), ${Object.keys(st.servico).length} serviço(s), ${Object.keys(st.produto).length} insumo(s).`;
     pushed += dataResult.pushed;
     pulled += dataResult.pulled;
     removed += dataResult.removed;
@@ -733,13 +817,18 @@ export async function syncAll(): Promise<SyncResult> {
     if (pushed) parts.push(`${pushed} enviado(s)`);
     if (pulled) parts.push(`${pulled} recebido(s)`);
     if (removed) parts.push(`${removed} removido(s)`);
-    const message = parts.length
-      ? `Google Agenda sincronizado: ${parts.join(', ')}.`
-      : 'Tudo já está sincronizado com o Google Agenda.';
+    const message =
+      (parts.length
+        ? `Google Agenda sincronizado: ${parts.join(', ')}.`
+        : 'Tudo já está sincronizado com o Google Agenda.') +
+      ' ' +
+      cadastros;
+    recordSync(true, message);
     storageService.addSyncLog({ tipo: 'upload', detalhes: message, sucesso: true });
     return { syncedCount: pushed + pulled + removed, message };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    recordSync(false, `Falha ao sincronizar: ${msg}`);
     storageService.addSyncLog({ tipo: 'error', detalhes: `Falha na sincronização: ${msg}`, sucesso: false });
     return { syncedCount: pushed + pulled + removed, message: `Falha ao sincronizar: ${msg}` };
   } finally {
