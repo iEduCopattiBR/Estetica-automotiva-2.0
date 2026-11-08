@@ -177,7 +177,41 @@ export const storageService = {
     return true;
   },
 
+  _syncTimer: undefined as ReturnType<typeof setTimeout> | undefined,
+
+  // Agenda uma sincronização logo depois de alterar clientes, serviços ou insumos
+  scheduleSync() {
+    if (!this.getGoogleAuth() || !this.isOnline()) return;
+    if (this._syncTimer) clearTimeout(this._syncTimer);
+    this._syncTimer = setTimeout(() => {
+      this._syncTimer = undefined;
+      this.syncPendingToGoogleCalendar();
+    }, 2500);
+  },
+
+  // Lista de clientes com as estatísticas calculadas a partir dos agendamentos concluídos
   getClientes(): Cliente[] {
+    const list = this.getClientesRaw();
+    if (list.length === 0) return list;
+    const norm = (t: string) => (t || '').trim().toLowerCase();
+    const concluidos = this.getAgendamentos().filter((a) => a.status === 'concluido');
+    return list.map((c) => {
+      const doCliente = concluidos.filter((a) => norm(a.clienteNome) === norm(c.nome));
+      return {
+        ...c,
+        servicosRealizados: doCliente.length,
+        totalGasto: doCliente.reduce((total, a) => total + (a.preco || 0), 0),
+      };
+    });
+  },
+
+  saveClientesRaw(list: Cliente[]) {
+    safeSetItem(CLIENTES_KEY, JSON.stringify(list));
+    this.scheduleSync();
+  },
+
+  // Cadastro como está guardado (sem estatísticas calculadas)
+  getClientesRaw(): Cliente[] {
     const raw = safeGetItem(CLIENTES_KEY);
     if (!raw) {
       safeSetItem(CLIENTES_KEY, JSON.stringify([]));
@@ -192,7 +226,7 @@ export const storageService = {
   },
 
   addCliente(cliente: Omit<Cliente, 'id' | 'servicosRealizados' | 'totalGasto' | 'dataCadastro'>): Cliente {
-    const list = this.getClientes();
+    const list = this.getClientesRaw();
     const newCli: Cliente = {
       ...cliente,
       id: 'cli-' + Date.now().toString(),
@@ -202,24 +236,27 @@ export const storageService = {
     };
     list.unshift(newCli);
     safeSetItem(CLIENTES_KEY, JSON.stringify(list));
+    this.scheduleSync();
     return newCli;
   },
 
   updateCliente(id: string, updates: Partial<Omit<Cliente, 'id'>>): Cliente | null {
-    const list = this.getClientes();
+    const list = this.getClientesRaw();
     const idx = list.findIndex((c) => c.id === id);
     if (idx === -1) return null;
     const updated: Cliente = { ...list[idx], ...updates, id: list[idx].id };
     list[idx] = updated;
     safeSetItem(CLIENTES_KEY, JSON.stringify(list));
+    this.scheduleSync();
     return updated;
   },
 
   deleteCliente(id: string): boolean {
-    const list = this.getClientes();
+    const list = this.getClientesRaw();
     const filtered = list.filter((c) => c.id !== id);
     if (filtered.length === list.length) return false;
     safeSetItem(CLIENTES_KEY, JSON.stringify(filtered));
+    this.scheduleSync();
     return true;
   },
 
@@ -332,6 +369,7 @@ export const storageService = {
 
   saveProdutos(list: Produto[]): void {
     safeSetItem(PRODUTOS_KEY, JSON.stringify(list));
+    this.scheduleSync();
   },
 
   addProduto(item: Omit<Produto, 'id' | 'custoUnitario'>): Produto {
@@ -391,6 +429,7 @@ export const storageService = {
 
   saveTiposServico(list: TipoServico[]): void {
     safeSetItem(TIPOS_SERVICO_KEY, JSON.stringify(list));
+    this.scheduleSync();
   },
 
   addTipoServico(item: Omit<TipoServico, 'id'>): TipoServico {

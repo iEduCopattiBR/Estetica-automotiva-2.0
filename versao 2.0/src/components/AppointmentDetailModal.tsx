@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, DollarSign, Car, Phone, Trash2, Cloud, CloudOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { X, Calendar, Clock, DollarSign, Car, Phone, Trash2, Cloud, CloudOff, RefreshCw, CheckCircle2, UserPlus, MapPin } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Agendamento, StatusAgendamento } from '../types';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -22,6 +22,7 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [justRegistered, setJustRegistered] = useState(false);
 
   if (!isOpen || !agendamento) return null;
 
@@ -35,6 +36,32 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
     hour: '2-digit',
     minute: '2-digit',
   });
+
+  const nameKey = (t: string) => (t || '').trim().toLowerCase();
+  const alreadyRegistered =
+    justRegistered ||
+    storageService.getClientesRaw().some((c) => nameKey(c.nome) === nameKey(agendamento.clienteNome));
+
+  // "Modelo (PLACA)" -> modelo e placa separados
+  const splitVeiculo = (text: string) => {
+    const m = (text || '').trim().match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+    if (!m) return { modelo: (text || '').trim(), placa: '' };
+    const placa = m[2].trim().toUpperCase();
+    return { modelo: m[1].trim(), placa: placa === 'SEM PLACA' ? '' : placa };
+  };
+
+  const handleRegisterClient = () => {
+    const { modelo, placa } = splitVeiculo(agendamento.clienteVeiculo || '');
+    storageService.addCliente({
+      nome: agendamento.clienteNome.trim(),
+      telefone: agendamento.clienteTelefone || '',
+      veiculo: modelo || 'Veículo não informado',
+      placa: placa || 'SEM PLACA',
+      endereco: agendamento.endereco || undefined,
+    });
+    setJustRegistered(true);
+    onUpdated();
+  };
 
   const handleStatusChange = (newStatus: StatusAgendamento) => {
     storageService.updateAgendamento(agendamento.id, { status: newStatus });
@@ -128,6 +155,15 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
             </div>
           )}
 
+          {agendamento.endereco && (
+            <div className="flex items-center justify-between py-2 border-b border-zinc-800/80 gap-3">
+              <span className="text-zinc-400 flex items-center gap-2 shrink-0">
+                <MapPin size={15} className="text-[#E50914]" /> Endereço:
+              </span>
+              <span className="font-semibold text-white text-right">{agendamento.endereco}</span>
+            </div>
+          )}
+
           {agendamento.clienteTelefone && (
             <div className="flex items-center justify-between py-2 border-b border-zinc-800/80">
               <span className="text-zinc-400 flex items-center gap-2">
@@ -162,6 +198,25 @@ export const AppointmentDetailModal: React.FC<AppointmentDetailModalProps> = ({
                 {agendamento.observacoes}
               </p>
             </div>
+          )}
+        </div>
+
+        {/* Cadastrar o cliente deste agendamento neste celular */}
+        <div className="mt-4">
+          {alreadyRegistered ? (
+            <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-950/30 border border-emerald-900/50 rounded-xl px-3 py-2.5">
+              <CheckCircle2 size={15} />
+              Cliente já cadastrado neste celular
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRegisterClient}
+              className="w-full py-2.5 rounded-xl border border-[#E50914]/60 text-[#E50914] hover:bg-[#E50914]/10 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition"
+            >
+              <UserPlus size={15} />
+              Cadastrar este cliente neste celular
+            </button>
           )}
         </div>
 

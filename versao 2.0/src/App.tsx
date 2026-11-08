@@ -21,6 +21,7 @@ import { ServiceModal } from './components/ServiceModal';
 import { ProductModal } from './components/ProductModal';
 import { storageService } from './services/storageService';
 import * as googleCalendar from './services/googleCalendar';
+import * as reminders from './services/reminders';
 import { Agendamento, Cliente, GoogleAuthUser, TipoServico, Produto } from './types';
 
 export default function App() {
@@ -62,8 +63,20 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
+  // Lembretes: sempre que os agendamentos mudam, reenvia a lista ao Android
+  useEffect(() => {
+    reminders.scheduleReminders(agendamentos);
+  }, [agendamentos]);
+
   // Fluxo de inicialização e checagem de rede nativa
   useEffect(() => {
+    const reloadAll = () => {
+      setAgendamentos([...storageService.getAgendamentos()]);
+      setClientes([...storageService.getClientes()]);
+      setServicos([...storageService.getTiposServico()]);
+      setProdutos([...storageService.getProdutos()]);
+    };
+
     const checkNetworkAndAuth = () => {
       const online = typeof navigator !== 'undefined' ? navigator.onLine : storageService.isOnline();
       setIsOnline(online);
@@ -76,7 +89,7 @@ export default function App() {
             if (res.syncedCount > 0) {
               showToast(res.message);
             }
-            setAgendamentos(storageService.getAgendamentos());
+            reloadAll();
           });
         }
       }
@@ -88,7 +101,7 @@ export default function App() {
       setIsOnline(true);
       storageService.setOnlineStatus(true);
       storageService.syncPendingToGoogleCalendar().then((res) => {
-        setAgendamentos(storageService.getAgendamentos());
+        reloadAll();
         if (res.syncedCount > 0) {
           showToast(`Conexão restabelecida! ${res.message}`);
         }
@@ -100,7 +113,7 @@ export default function App() {
       if (document.visibilityState === 'visible' && storageService.getGoogleAuth()) {
         storageService.syncPendingToGoogleCalendar().then((res) => {
           if (res.syncedCount > 0) {
-            setAgendamentos(storageService.getAgendamentos());
+            reloadAll();
             showToast(res.message);
           }
         });
@@ -364,6 +377,7 @@ export default function App() {
         }}
         isOnline={isOnline}
         onToggleOnline={handleToggleOnline}
+        onSynced={refreshData}
       />
 
       <ServiceModal
