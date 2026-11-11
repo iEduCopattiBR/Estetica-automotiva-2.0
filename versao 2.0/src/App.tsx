@@ -19,9 +19,12 @@ import { SettingsModal } from './components/SettingsModal';
 import { ServicesView } from './components/ServicesView';
 import { ServiceModal } from './components/ServiceModal';
 import { ProductModal } from './components/ProductModal';
+import { RetornosModal } from './components/RetornosModal';
+import { OrcamentoModal } from './components/OrcamentoModal';
 import { storageService } from './services/storageService';
 import * as googleCalendar from './services/googleCalendar';
 import * as reminders from './services/reminders';
+import * as retornos from './services/retornos';
 import { Agendamento, Cliente, GoogleAuthUser, TipoServico, Produto } from './types';
 
 export default function App() {
@@ -45,6 +48,8 @@ export default function App() {
   const [isNewClientOpen, setIsNewClientOpen] = useState(false);
   const [isSearchClientOpen, setIsSearchClientOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRetornosOpen, setIsRetornosOpen] = useState(false);
+  const [isOrcamentoOpen, setIsOrcamentoOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState<Agendamento | null>(null);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
 
@@ -66,7 +71,7 @@ export default function App() {
   // Lembretes: sempre que os agendamentos mudam, reenvia a lista ao Android
   useEffect(() => {
     reminders.scheduleReminders(agendamentos);
-  }, [agendamentos]);
+  }, [agendamentos, servicos]);
 
   // Fluxo de inicialização e checagem de rede nativa
   useEffect(() => {
@@ -223,6 +228,9 @@ export default function App() {
             onOpenVerTodosAgendamentos={() => setActiveTab('agenda')}
             onSelectAgendamento={(item) => setSelectedAgendamento(item)}
             onOpenServicos={() => setActiveTab('servicos')}
+            onOpenRetornos={() => setIsRetornosOpen(true)}
+            onOpenOrcamento={() => setIsOrcamentoOpen(true)}
+            retornosPendentes={retornos.contarParaEnviar(agendamentos)}
             isOnline={isOnline}
             hasGoogleAuth={!!authUser}
           />
@@ -378,6 +386,20 @@ export default function App() {
         isOnline={isOnline}
         onToggleOnline={handleToggleOnline}
         onSynced={refreshData}
+      />
+
+      <OrcamentoModal
+        isOpen={isOrcamentoOpen}
+        onClose={() => setIsOrcamentoOpen(false)}
+        clientes={clientes}
+        servicos={servicos}
+      />
+
+      <RetornosModal
+        isOpen={isRetornosOpen}
+        onClose={() => setIsRetornosOpen(false)}
+        agendamentos={agendamentos}
+        onChanged={refreshData}
       />
 
       <ServiceModal

@@ -96,6 +96,80 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Ponte JS -> Android: salva um PDF em Downloads/Schmitt Detailer e abre o menu de compartilhar. */
+    public class PdfBridge {
+        @JavascriptInterface
+        public boolean savePdf(String base64, String fileName, boolean share) {
+            if (Build.VERSION.SDK_INT < 29) {
+                toast("Para salvar o PDF é preciso Android 10 ou superior.");
+                return false;
+            }
+            try {
+                byte[] data = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
+                final Uri uri = savePdfApi29(data, fileName);
+                if (uri == null) return false;
+                toast("PDF salvo em Downloads/Schmitt Detailer");
+                if (share) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            try {
+                                Intent send = new Intent(Intent.ACTION_SEND);
+                                send.setType("application/pdf");
+                                send.putExtra(Intent.EXTRA_STREAM, uri);
+                                send.setClipData(android.content.ClipData.newRawUri("PDF", uri));
+                                send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                                startActivity(Intent.createChooser(send, "Enviar orçamento"));
+                            } catch (Exception ignored) {
+                                // o arquivo já está salvo em Downloads
+                            }
+                        }
+                    });
+                }
+                return true;
+            } catch (Exception e) {
+                return false;
+            }
+        }
+
+        @android.annotation.TargetApi(29)
+        private Uri savePdfApi29(byte[] data, String fileName) throws java.io.IOException {
+            android.content.ContentResolver resolver = getContentResolver();
+            android.content.ContentValues values = new android.content.ContentValues();
+            values.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName);
+            values.put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/pdf");
+            values.put(android.provider.MediaStore.Downloads.RELATIVE_PATH,
+                    android.os.Environment.DIRECTORY_DOWNLOADS + "/Schmitt Detailer");
+            values.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
+            Uri uri = resolver.insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+            if (uri == null) return null;
+            java.io.OutputStream out = resolver.openOutputStream(uri);
+            if (out == null) {
+                resolver.delete(uri, null, null);
+                return null;
+            }
+            try {
+                out.write(data);
+                out.flush();
+            } finally {
+                out.close();
+            }
+            values.clear();
+            values.put(android.provider.MediaStore.Downloads.IS_PENDING, 0);
+            resolver.update(uri, values, null, null);
+            return uri;
+        }
+
+        private void toast(final String msg) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    android.widget.Toast.makeText(MainActivity.this, msg, android.widget.Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -124,6 +198,7 @@ public class MainActivity extends Activity {
 
         webView.addJavascriptInterface(new GoogleBridge(), "AndroidGoogle");
         webView.addJavascriptInterface(new NotifyBridge(), "AndroidNotify");
+        webView.addJavascriptInterface(new PdfBridge(), "AndroidPdf");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override

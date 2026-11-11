@@ -11,6 +11,8 @@ import {
   Play,
   Cloud,
   CloudOff,
+  BellRing,
+  FileText,
 } from 'lucide-react';
 import { Agendamento, Cliente } from '../types';
 
@@ -24,6 +26,9 @@ interface DashboardViewProps {
   onOpenVerTodosAgendamentos: () => void;
   onSelectAgendamento: (item: Agendamento) => void;
   onOpenServicos?: () => void;
+  onOpenRetornos?: () => void;
+  onOpenOrcamento?: () => void;
+  retornosPendentes?: number;
   isOnline: boolean;
   hasGoogleAuth: boolean;
 }
@@ -38,6 +43,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenVerTodosAgendamentos,
   onSelectAgendamento,
   onOpenServicos,
+  onOpenRetornos,
+  onOpenOrcamento,
+  retornosPendentes = 0,
   isOnline,
   hasGoogleAuth,
 }) => {
@@ -175,6 +183,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <ChevronRight size={18} className="text-zinc-500 group-hover:text-white transition" />
         </button>
       </div>
+
+      {/* Orçamento e Lembretes de retorno */}
+      {(onOpenOrcamento || onOpenRetornos) && (
+        <div className="grid grid-cols-2 gap-3 mt-3">
+          {onOpenOrcamento && (
+            <button
+              onClick={onOpenOrcamento}
+              className="group p-3.5 rounded-2xl bg-[#141417] border border-[#26262E] hover:border-zinc-500 transition-all flex items-center justify-between text-left cursor-pointer active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-200 shrink-0">
+                  <FileText size={22} className="stroke-[2.2]" />
+                </div>
+                <span className="text-sm font-bold text-white leading-tight">Orçamento</span>
+              </div>
+              <ChevronRight size={18} className="text-zinc-500 group-hover:text-white transition" />
+            </button>
+          )}
+          {onOpenRetornos && (
+            <button
+              onClick={onOpenRetornos}
+              className="group p-3.5 rounded-2xl bg-[#141417] border border-[#26262E] hover:border-zinc-500 transition-all flex items-center justify-between text-left cursor-pointer active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-zinc-800/80 border border-zinc-700/60 flex items-center justify-center text-zinc-200 shrink-0">
+                  <BellRing size={22} className="stroke-[2.2]" />
+                </div>
+                <span className="text-sm font-bold text-white leading-tight">Lembretes</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {retornosPendentes > 0 && (
+                  <span className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-[#E50914] text-white text-xs font-bold flex items-center justify-center">
+                    {retornosPendentes}
+                  </span>
+                )}
+                <ChevronRight size={18} className="text-zinc-500 group-hover:text-white transition" />
+              </div>
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 3. Section: Agendamentos */}
       <div className="mt-7">

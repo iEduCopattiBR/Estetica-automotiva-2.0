@@ -73,6 +73,7 @@ export interface TipoServico {
   descricao?: string;
   precoPadrao: number;
   duracaoMinutos?: number;
+  lembreteDias?: number; // dias após o serviço para lembrar o cliente de voltar (vazio = sem lembrete)
   produtos: ComboProdutoItem[];
   ativo: boolean;
   createdAt?: string;

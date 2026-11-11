@@ -25,6 +25,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   const [descricao, setDescricao] = useState('');
   const [precoPadrao, setPrecoPadrao] = useState<string>('');
   const [duracaoMinutos, setDuracaoMinutos] = useState<string>('120');
+  const [lembreteDias, setLembreteDias] = useState<string>('');
   const [itensCombo, setItensCombo] = useState<ComboProdutoItem[]>([]);
   const [ativo, setAtivo] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       setDescricao(servicoParaEditar.descricao || '');
       setPrecoPadrao(servicoParaEditar.precoPadrao.toString());
       setDuracaoMinutos((servicoParaEditar.duracaoMinutos || 120).toString());
+      setLembreteDias(servicoParaEditar.lembreteDias ? servicoParaEditar.lembreteDias.toString() : '');
       setItensCombo(servicoParaEditar.produtos ? [...servicoParaEditar.produtos] : []);
       setAtivo(servicoParaEditar.ativo);
     } else {
@@ -43,6 +45,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       setDescricao('');
       setPrecoPadrao('');
       setDuracaoMinutos('120');
+      setLembreteDias('');
       // If products exist, pre-select the first product for convenience
       setItensCombo(produtosDisponiveis.length > 0 ? [{ produtoId: produtosDisponiveis[0].id, quantidadeUtilizada: 50 }] : []);
       setAtivo(true);
@@ -55,6 +58,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
 
   const precoNum = parseFloat(precoPadrao) || 0;
   const duracaoNum = parseInt(duracaoMinutos, 10) || 60;
+  const lembreteNum = parseInt(lembreteDias, 10);
+  const lembreteValor = Number.isFinite(lembreteNum) && lembreteNum > 0 ? lembreteNum : undefined;
 
   // Mapa de produtos para lookup rápido de preços e unidades
   const prodMap = new Map(produtosDisponiveis.map((p) => [p.id, p]));
@@ -126,6 +131,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         descricao: descricao.trim() || undefined,
         precoPadrao: precoNum,
         duracaoMinutos: duracaoNum,
+        lembreteDias: lembreteValor,
         produtos: produtosFiltrados,
         ativo,
       });
@@ -135,6 +141,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         descricao: descricao.trim() || undefined,
         precoPadrao: precoNum,
         duracaoMinutos: duracaoNum,
+        lembreteDias: lembreteValor,
         produtos: produtosFiltrados,
         ativo,
       });
@@ -223,6 +230,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 className="w-full bg-[#1C1C1F] border border-[#2E2E33] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#E50914] transition"
               />
             </div>
+          </div>
+
+          {/* Lembrete de retorno */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1.5 flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              Lembrar o cliente após (dias)
+            </label>
+            <input
+              type="number"
+              step="1"
+              min="1"
+              placeholder="Ex: 180 (vazio = sem lembrete)"
+              value={lembreteDias}
+              onChange={(e) => setLembreteDias(e.target.value)}
+              className="w-full bg-[#1C1C1F] border border-[#2E2E33] rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-[#E50914] transition"
+            />
+            <p className="text-[11px] text-zinc-500 mt-1">
+              Passado esse prazo após o serviço concluído, o app avisa você para enviar uma mensagem pelo WhatsApp.
+            </p>
           </div>
 
           {/* Descrição Técnica */}

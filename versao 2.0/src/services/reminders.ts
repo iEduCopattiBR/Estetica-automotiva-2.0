@@ -1,4 +1,5 @@
 import { Agendamento } from '../types';
+import { buildRetornoNotifications } from './retornos';
 
 /**
  * Lembretes de agendamento (notificação do Android antes do atendimento).
@@ -202,7 +203,13 @@ export function sendDailyTest(list: Agendamento[]): void {
 export function scheduleReminders(list: Agendamento[]): void {
   if (!isAvailable()) return;
   try {
-    const items = buildReminders(list, getLeadMinutes());
+    let retornos: ReturnType<typeof buildRetornoNotifications> = [];
+    try {
+      retornos = buildRetornoNotifications(list);
+    } catch {
+      /* os lembretes de retorno nunca podem derrubar os de agendamento */
+    }
+    const items = [...buildReminders(list, getLeadMinutes()), ...retornos];
     window.AndroidNotify!.schedule(JSON.stringify(items));
   } catch {
     /* ignore */
