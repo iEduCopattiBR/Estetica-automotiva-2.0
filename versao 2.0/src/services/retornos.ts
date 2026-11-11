@@ -255,15 +255,57 @@ export function urlWhatsApp(telefone: string, mensagem: string): string {
   return `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
 }
 
-/** Abre o WhatsApp com a mensagem pronta. No app Android o link é aberto fora do WebView. */
-export function abrirWhatsApp(telefone: string, mensagem: string): void {
+/** Mostra o número como +55 54 99999-1234 (para a pessoa conferir para quem vai a mensagem). */
+export function formatarTelefone(digitos: string): string {
+  const d = digitos.startsWith('55') ? digitos.slice(2) : digitos;
+  const ddd = d.slice(0, 2);
+  const resto = d.slice(2);
+  const corte = resto.length > 8 ? 5 : 4;
+  return `+55 ${ddd} ${resto.slice(0, corte)}-${resto.slice(corte)}`;
+}
+
+export type TipoWhatsApp = 'auto' | 'whatsapp' | 'business';
+const WA_TIPO_KEY = 'schmitt_detailer_whatsapp_tipo';
+
+export function getTipoWhatsApp(): TipoWhatsApp {
+  const v = ler(WA_TIPO_KEY);
+  return v === 'whatsapp' || v === 'business' ? v : 'auto';
+}
+
+export function setTipoWhatsApp(tipo: TipoWhatsApp): void {
+  gravar(WA_TIPO_KEY, tipo);
+}
+
+declare global {
+  interface Window {
+    AndroidWhatsApp?: {
+      open(phone: string, message: string, preferred: string): boolean;
+    };
+  }
+}
+
+/**
+ * Abre a conversa do WhatsApp no número do cliente, com a mensagem pronta.
+ * Retorna false se não foi possível abrir (WhatsApp não instalado, número inválido...).
+ */
+export function abrirWhatsApp(telefone: string, mensagem: string): boolean {
+  if (typeof window === 'undefined') return false;
+
+  if (window.AndroidWhatsApp) {
+    try {
+      return window.AndroidWhatsApp.open(telefone, mensagem, getTipoWhatsApp());
+    } catch {
+      return false;
+    }
+  }
+
   const url = urlWhatsApp(telefone, mensagem);
-  if (typeof window === 'undefined') return;
   if (window.AndroidNotify) {
     window.location.href = url;
-  } else {
-    window.open(url, '_blank', 'noopener');
+    return true;
   }
+  window.open(url, '_blank', 'noopener');
+  return true;
 }
 
 // ------------------------------------------------------------------ notificações do Android

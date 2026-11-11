@@ -96,6 +96,71 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** Ponte JS -> Android: abre a conversa do WhatsApp (normal ou Business) no número do cliente, com a mensagem pronta. */
+    public class WhatsAppBridge {
+        @JavascriptInterface
+        public boolean open(String phone, String message, String preferred) {
+            final String digits = phone == null ? "" : phone.replaceAll("[^0-9]", "");
+            if (digits.length() < 10) {
+                showToast("Número de telefone inválido.");
+                return false;
+            }
+            final String texto = message == null ? "" : message;
+            final String pref = preferred == null ? "auto" : preferred;
+            final boolean[] aberto = {false};
+            final java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(1);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        Uri uri = Uri.parse("https://wa.me/" + digits + "?text=" + Uri.encode(texto));
+                        String[] pacotes;
+                        if ("business".equals(pref)) {
+                            pacotes = new String[]{"com.whatsapp.w4b", "com.whatsapp", null};
+                        } else if ("whatsapp".equals(pref)) {
+                            pacotes = new String[]{"com.whatsapp", "com.whatsapp.w4b", null};
+                        } else {
+                            pacotes = new String[]{null};
+                        }
+                        for (String pacote : pacotes) {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                                if (pacote != null) intent.setPackage(pacote);
+                                startActivity(intent);
+                                aberto[0] = true;
+                                break;
+                            } catch (android.content.ActivityNotFoundException e) {
+                                // este app não está instalado: tenta o próximo
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // aberto continua false
+                    } finally {
+                        latch.countDown();
+                    }
+                }
+            });
+
+            try {
+                latch.await(3, java.util.concurrent.TimeUnit.SECONDS);
+            } catch (InterruptedException ignored) {
+                // segue com o resultado atual
+            }
+            if (!aberto[0]) showToast("Não encontrei o WhatsApp neste aparelho.");
+            return aberto[0];
+        }
+
+        private void showToast(final String msg) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    android.widget.Toast.makeText(MainActivity.this, msg, android.widget.Toast.LENGTH_LONG).show();
+                }
+            });
+        }
+    }
+
     /** Ponte JS -> Android: salva um PDF em Downloads/Schmitt Detailer e abre o menu de compartilhar. */
     public class PdfBridge {
         @JavascriptInterface
@@ -199,6 +264,7 @@ public class MainActivity extends Activity {
         webView.addJavascriptInterface(new GoogleBridge(), "AndroidGoogle");
         webView.addJavascriptInterface(new NotifyBridge(), "AndroidNotify");
         webView.addJavascriptInterface(new PdfBridge(), "AndroidPdf");
+        webView.addJavascriptInterface(new WhatsAppBridge(), "AndroidWhatsApp");
 
         webView.setWebViewClient(new WebViewClient() {
             @Override

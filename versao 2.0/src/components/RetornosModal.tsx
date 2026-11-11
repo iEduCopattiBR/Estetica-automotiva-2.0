@@ -18,6 +18,7 @@ export const RetornosModal: React.FC<RetornosModalProps> = ({ isOpen, onClose, a
   const [versao, setVersao] = useState(0);
   const [mensagem, setMensagemState] = useState<string>(() => retornos.getMensagem());
   const [aviso, setAviso] = useState<string | null>(null);
+  const [tipoWa, setTipoWa] = useState<retornos.TipoWhatsApp>(() => retornos.getTipoWhatsApp());
 
   if (!isOpen) return null;
 
@@ -41,9 +42,13 @@ export const RetornosModal: React.FC<RetornosModalProps> = ({ isOpen, onClose, a
       return;
     }
     setAviso(null);
+    const aberto = retornos.abrirWhatsApp(r.telefone, retornos.montarMensagem(r, mensagem));
+    if (!aberto) {
+      setAviso('Não consegui abrir o WhatsApp. Confira se ele está instalado e, em "Mensagem do WhatsApp", escolha qual usar.');
+      return;
+    }
     retornos.marcarEnviado(r.id);
     depoisDeAcao();
-    retornos.abrirWhatsApp(r.telefone, retornos.montarMensagem(r, mensagem));
   };
 
   const handleSalvarMensagem = (texto: string) => {
@@ -95,7 +100,11 @@ export const RetornosModal: React.FC<RetornosModalProps> = ({ isOpen, onClose, a
                     <div className="text-[11px] text-zinc-500 mt-0.5">
                       Serviço em {fmtData(r.dataServico)} • há {r.diasDesdeServico} dias (lembrete de {r.dias} dias)
                     </div>
-                    {!r.telefone && (
+                    {r.telefone ? (
+                      <div className="text-[11px] text-emerald-400 mt-1">
+                        WhatsApp: {retornos.formatarTelefone(r.telefone)}
+                      </div>
+                    ) : (
                       <div className="text-[11px] text-amber-400 mt-1">Sem celular válido cadastrado.</div>
                     )}
                     <div className="grid grid-cols-3 gap-2 mt-3">
@@ -190,6 +199,30 @@ export const RetornosModal: React.FC<RetornosModalProps> = ({ isOpen, onClose, a
           {/* Mensagem */}
           <section>
             <h3 className="text-sm font-bold text-white mb-1">Mensagem do WhatsApp</h3>
+            <div className="mb-3">
+              <div className="text-[11px] text-zinc-500 mb-1.5">Enviar usando:</div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {([
+                  ['auto', 'Automático'],
+                  ['whatsapp', 'WhatsApp'],
+                  ['business', 'Business'],
+                ] as [retornos.TipoWhatsApp, string][]).map(([valor, rotulo]) => (
+                  <button
+                    key={valor}
+                    onClick={() => {
+                      setTipoWa(valor);
+                      retornos.setTipoWhatsApp(valor);
+                    }}
+                    className={
+                      'py-2 rounded-xl text-xs font-bold transition cursor-pointer ' +
+                      (tipoWa === valor ? 'bg-[#E50914] text-white' : 'bg-[#1C1C22] text-zinc-300 hover:bg-[#25252e]')
+                    }
+                  >
+                    {rotulo}
+                  </button>
+                ))}
+              </div>
+            </div>
             <p className="text-[11px] text-zinc-500 mb-2">
               Campos automáticos: {'{nome}'}, {'{servico}'}, {'{veiculo}'} e {'{dias}'}.
             </p>
