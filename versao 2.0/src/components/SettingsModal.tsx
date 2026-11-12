@@ -3,9 +3,8 @@ import { X, Wifi, WifiOff, RefreshCw, LogOut, Shield, CheckCircle2, Bell } from 
 import { storageService } from '../services/storageService';
 import * as googleCalendar from '../services/googleCalendar';
 import * as reminders from '../services/reminders';
-import * as transfer from '../services/transfer';
-import { ConfirmDialog } from './ConfirmDialog';
 import { GoogleAuthUser } from '../types';
+import { BackupSection } from './BackupSection';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -30,9 +29,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 }) => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
-  const [confirmResync, setConfirmResync] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [transferMsg, setTransferMsg] = useState<string | null>(null);
   const [leadMin, setLeadMin] = useState<number>(() => reminders.getLeadMinutes());
   const [dailyOn, setDailyOn] = useState<boolean>(() => reminders.getDailyEnabled());
   const [dailyTime, setDailyTime] = useState<string>(() => reminders.getDailyTime());
@@ -47,39 +43,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setIsSyncing(false);
       if (onSynced) onSynced();
     });
-  };
-
-  const doFullResync = () => {
-    setConfirmResync(false);
-    setIsSyncing(true);
-    setSyncMessage(null);
-    googleCalendar.forceFullResync().then((res) => {
-      setSyncMessage(res.message);
-      setIsSyncing(false);
-      if (onSynced) onSynced();
-    });
-  };
-
-  const handleCopyCadastros = async () => {
-    const ok = await transfer.copyText(transfer.exportCadastros());
-    setTransferMsg(
-      ok
-        ? 'Copiado! Cole numa conversa do WhatsApp e envie para o outro celular.'
-        : 'Não consegui copiar automaticamente neste celular.'
-    );
-  };
-
-  const handleImportCadastros = () => {
-    try {
-      const r = transfer.importCadastros(importText);
-      setTransferMsg(
-        `Importado: ${r.clientes} cliente(s), ${r.produtos} insumo(s), ${r.servicos} serviço(s) novos ou atualizados.`
-      );
-      setImportText('');
-      if (onSynced) onSynced();
-    } catch (e) {
-      setTransferMsg(e instanceof Error ? e.message : 'Falha ao importar.');
-    }
   };
 
   const handleLeadChange = (value: number) => {
@@ -108,7 +71,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
       <div className="w-full max-w-lg bg-[#161619] border border-[#282830] rounded-2xl p-6 shadow-2xl text-white max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between pb-4 border-b border-zinc-800">
@@ -204,15 +166,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     </p>
                   )}
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setConfirmResync(true)}
-                  disabled={isSyncing}
-                  className="w-full py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[11px] font-bold rounded-xl border border-zinc-700/60 cursor-pointer transition disabled:opacity-50"
-                >
-                  Refazer sincronização completa
-                </button>
 
                 <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
                   <button
@@ -338,52 +291,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           )}
 
-          {/* Plano B: transferir cadastros por texto */}
-          <div className="p-3.5 rounded-xl bg-[#111113] border border-zinc-800 space-y-2.5">
-            <h3 className="text-xs font-bold text-zinc-300 uppercase tracking-wider">Transferir cadastros</h3>
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Copia clientes, insumos e serviços como um texto. Envie por WhatsApp e cole no outro celular.
-              Nada é apagado: só entra o que for novo ou diferente.
-            </p>
-            <button
-              type="button"
-              onClick={handleCopyCadastros}
-              className="w-full py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-bold rounded-xl border border-zinc-700/60 cursor-pointer transition"
-            >
-              Copiar cadastros deste celular
-            </button>
-            <textarea
-              value={importText}
-              onChange={(e) => setImportText(e.target.value)}
-              rows={3}
-              placeholder="Cole aqui o texto copiado do outro celular"
-              className="w-full bg-[#0d0d10] border border-[#2b2b34] rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E50914]"
-            />
-            <button
-              type="button"
-              onClick={handleImportCadastros}
-              disabled={!importText.trim()}
-              className="w-full py-2 bg-[#E50914] hover:bg-[#c20811] disabled:opacity-40 text-white text-xs font-bold rounded-xl cursor-pointer transition"
-            >
-              Importar cadastros
-            </button>
-            {transferMsg && <p className="text-[11px] text-zinc-300">{transferMsg}</p>}
-          </div>
+          <BackupSection />
 
           <div className="pt-2 flex items-center justify-between border-t border-zinc-800 text-[11px] text-zinc-500">
             <span>Schmitt Detailer • Modo Operação Real</span>
-            <span>v1.4.1</span>
+            <span>v1.6.0</span>
           </div>
         </div>
       </div>
     </div>
-      <ConfirmDialog
-        open={confirmResync}
-        confirmLabel="Refazer"
-        message="Isto reenvia todos os dados deste celular para o Google Agenda e baixa o que estiver lá. Nada é apagado. Use se os cadastros não estiverem aparecendo no outro celular."
-        onConfirm={doFullResync}
-        onCancel={() => setConfirmResync(false)}
-      />
-    </>
   );
 };

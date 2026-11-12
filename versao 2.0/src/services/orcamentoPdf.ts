@@ -29,6 +29,7 @@ declare global {
   interface Window {
     AndroidPdf?: {
       savePdf(base64: string, fileName: string, share: boolean): boolean;
+      saveFile?(base64: string, fileName: string, mimeType: string, share: boolean, title: string): boolean;
     };
   }
 }

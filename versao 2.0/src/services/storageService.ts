@@ -205,11 +205,6 @@ export const storageService = {
     });
   },
 
-  saveClientesRaw(list: Cliente[]) {
-    safeSetItem(CLIENTES_KEY, JSON.stringify(list));
-    this.scheduleSync();
-  },
-
   // Cadastro como está guardado (sem estatísticas calculadas)
   getClientesRaw(): Cliente[] {
     const raw = safeGetItem(CLIENTES_KEY);
@@ -522,5 +517,18 @@ export const storageService = {
       detalhes: 'Todos os clientes, agendamentos e registros foram completamente apagados.',
       sucesso: true,
     });
+  },
+
+  // Acesso bruto (usado pelo backup e restauração). Respeita o mesmo armazenamento do app.
+  getRawItem(key: string): string | null {
+    return safeGetItem(key);
+  },
+
+  setRawItem(key: string, value: string): void {
+    safeSetItem(key, value);
+  },
+
+  removeRawItem(key: string): void {
+    safeRemoveItem(key);
   },
 };

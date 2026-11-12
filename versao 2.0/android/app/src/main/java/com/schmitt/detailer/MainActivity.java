@@ -43,6 +43,8 @@ public class MainActivity extends Activity {
 
     private WebView webView;
     private String pendingReqId;
+    private static final int REQ_FILE = 4002;
+    private android.webkit.ValueCallback<Uri[]> filePathCallback;
 
     /** Ponte JS -> Android: o app web pede um token do Google Agenda. */
     public class GoogleBridge {
@@ -161,30 +163,37 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Ponte JS -> Android: salva um PDF em Downloads/Schmitt Detailer e abre o menu de compartilhar. */
+    /** Ponte JS -> Android: salva um arquivo (PDF, backup...) em Downloads/Schmitt Detailer e abre o menu de compartilhar. */
     public class PdfBridge {
         @JavascriptInterface
         public boolean savePdf(String base64, String fileName, boolean share) {
+            return saveFile(base64, fileName, "application/pdf", share, "Enviar orçamento");
+        }
+
+        @JavascriptInterface
+        public boolean saveFile(String base64, String fileName, String mimeType, boolean share, String title) {
             if (Build.VERSION.SDK_INT < 29) {
-                toast("Para salvar o PDF é preciso Android 10 ou superior.");
+                toast("Para salvar o arquivo é preciso Android 10 ou superior.");
                 return false;
             }
             try {
+                final String mime = (mimeType == null || mimeType.isEmpty()) ? "application/octet-stream" : mimeType;
+                final String chooserTitle = (title == null || title.isEmpty()) ? "Enviar arquivo" : title;
                 byte[] data = android.util.Base64.decode(base64, android.util.Base64.DEFAULT);
-                final Uri uri = savePdfApi29(data, fileName);
+                final Uri uri = saveToDownloadsApi29(data, fileName, mime);
                 if (uri == null) return false;
-                toast("PDF salvo em Downloads/Schmitt Detailer");
+                toast("Arquivo salvo em Downloads/Schmitt Detailer");
                 if (share) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
                             try {
                                 Intent send = new Intent(Intent.ACTION_SEND);
-                                send.setType("application/pdf");
+                                send.setType(mime);
                                 send.putExtra(Intent.EXTRA_STREAM, uri);
-                                send.setClipData(android.content.ClipData.newRawUri("PDF", uri));
+                                send.setClipData(android.content.ClipData.newRawUri("Arquivo", uri));
                                 send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                startActivity(Intent.createChooser(send, "Enviar orçamento"));
+                                startActivity(Intent.createChooser(send, chooserTitle));
                             } catch (Exception ignored) {
                                 // o arquivo já está salvo em Downloads
                             }
@@ -198,11 +207,11 @@ public class MainActivity extends Activity {
         }
 
         @android.annotation.TargetApi(29)
-        private Uri savePdfApi29(byte[] data, String fileName) throws java.io.IOException {
+        private Uri saveToDownloadsApi29(byte[] data, String fileName, String mime) throws java.io.IOException {
             android.content.ContentResolver resolver = getContentResolver();
             android.content.ContentValues values = new android.content.ContentValues();
             values.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, fileName);
-            values.put(android.provider.MediaStore.Downloads.MIME_TYPE, "application/pdf");
+            values.put(android.provider.MediaStore.Downloads.MIME_TYPE, mime);
             values.put(android.provider.MediaStore.Downloads.RELATIVE_PATH,
                     android.os.Environment.DIRECTORY_DOWNLOADS + "/Schmitt Detailer");
             values.put(android.provider.MediaStore.Downloads.IS_PENDING, 1);
@@ -289,6 +298,26 @@ public class MainActivity extends Activity {
         // Sem isto, window.confirm()/alert() não funcionam no WebView (o confirm sempre "responde não",
         // e por isso o botão de excluir não fazia nada).
         webView.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onShowFileChooser(WebView view, android.webkit.ValueCallback<Uri[]> callback,
+                                             WebChromeClient.FileChooserParams params) {
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                }
+                filePathCallback = callback;
+                try {
+                    Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
+                    intent.addCategory(Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    startActivityForResult(Intent.createChooser(intent, "Escolher arquivo de backup"), REQ_FILE);
+                } catch (Exception e) {
+                    filePathCallback = null;
+                    callback.onReceiveValue(null);
+                    return false;
+                }
+                return true;
+            }
+
             @Override
             public boolean onJsAlert(WebView view, String url, String message, final JsResult result) {
                 new AlertDialog.Builder(MainActivity.this)
@@ -380,6 +409,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_FILE) {
+            if (filePathCallback != null) {
+                Uri[] escolhido = null;
+                if (resultCode == RESULT_OK && data != null && data.getData() != null) {
+                    escolhido = new Uri[]{data.getData()};
+                }
+                filePathCallback.onReceiveValue(escolhido);
+                filePathCallback = null;
+            }
+            return;
+        }
         if (requestCode != REQ_AUTH || pendingReqId == null) return;
 
         String reqId = pendingReqId;
